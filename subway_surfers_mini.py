@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # Cấu hình trang Streamlit
-st.set_page_config(page_title="Subway Surfers Pro - Mobile Fixed", page_icon="🛹", layout="centered")
+st.set_page_config(page_title="Subway Surfers Pro - Final", page_icon="🛹", layout="centered")
 
 st.markdown("""
     <h2 style='text-align: center; color: #ff6600; margin-bottom: 0;'>🛹 Subway Surfers: Streamlit Edition</h2>
@@ -15,7 +15,7 @@ game_code = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subway Surfers Fixed</title>
+    <title>Subway Surfers Final</title>
     <style>
         body {
             margin: 0;
@@ -98,7 +98,7 @@ let obstacles = [];
 let coinItems = [];
 let obstacleTimer = null;
 
-// Lắng nghe phím bấm bàn phím
+// Điều khiển bằng bàn phím
 window.addEventListener('keydown', function(e) {
     if (!gameStarted && (e.key === "Enter" || e.key === " ")) {
         startGame();
@@ -113,10 +113,9 @@ window.addEventListener('keydown', function(e) {
     if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") jump();
 });
 
-// Xử lý chạm/click chính xác trên mọi màn hình (Mobile & PC)
+// Xử lý chạm/click chính xác trên Mobile và PC
 function handleCanvasClick(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    // Tính tỷ lệ co giãn thực tế của canvas trên màn hình
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
@@ -124,12 +123,10 @@ function handleCanvasClick(clientX, clientY) {
     const y = (clientY - rect.top) * scaleY;
 
     if (!gameStarted) {
-        // Tọa độ nút Bắt Đầu: tâm canvas từ y: 340 đến 420
         if (x >= 120 && x <= 360 && y >= 340 && y <= 430) {
             startGame();
         }
     } else if (isGameOver) {
-        // Tọa độ nút Chơi Lại: y từ 380 đến 470
         if (x >= 120 && x <= 360 && y >= 380 && y <= 470) {
             resetGame();
         }
@@ -144,7 +141,7 @@ canvas.addEventListener('touchstart', function(e) {
     if (e.touches.length > 0) {
         const touch = e.touches[0];
         handleCanvasClick(touch.clientX, touch.clientY);
-        e.preventDefault(); // Ngăn cuộn trang khi chạm vào game
+        e.preventDefault();
     }
 }, {passive: false});
 
@@ -168,7 +165,7 @@ function startGame() {
     isGameOver = false;
     resetGameValues();
     if (obstacleTimer) clearInterval(obstacleTimer);
-    obstacleTimer = setInterval(spawnEntities, 2000);
+    obstacleTimer = setInterval(spawnEntities, 2200);
     loop();
 }
 
@@ -188,7 +185,7 @@ function resetGame() {
     resetGameValues();
     gameStarted = true;
     if (obstacleTimer) clearInterval(obstacleTimer);
-    obstacleTimer = setInterval(spawnEntities, 2000);
+    obstacleTimer = setInterval(spawnEntities, 2200);
     loop();
 }
 
@@ -198,9 +195,10 @@ function spawnEntities() {
     let lane = Math.floor(Math.random() * 3);
     let type = Math.random() > 0.4 ? "train" : "barrier";
     
+    // Cho z bắt đầu từ 0.3 để chướng ngại vật to rõ ngay từ xa, không bị nhỏ li ti
     obstacles.push({
         lane: lane,
-        z: 0.1,
+        z: 0.3,
         type: type
     });
 
@@ -208,7 +206,7 @@ function spawnEntities() {
         let coinLane = (lane + 1) % 3;
         coinItems.push({
             lane: coinLane,
-            z: 0.1
+            z: 0.3
         });
     }
 }
@@ -236,9 +234,10 @@ function update() {
     speed = 4 + Math.floor(score / 400);
 
     for (let i = 0; i < obstacles.length; i++) {
-        obstacles[i].z += 0.025 * (speed / 4);
+        obstacles[i].z += 0.02 * (speed / 4);
 
         let obs = obstacles[i];
+        // Va chạm chuẩn xác khi vật thể đến gần nhân vật
         if (obs.z >= 0.80 && obs.z <= 0.98 && obs.lane === playerLane) {
             if (obs.type === "train" || (obs.type === "barrier" && playerY >= 430)) {
                 isGameOver = true;
@@ -248,7 +247,7 @@ function update() {
     obstacles = obstacles.filter(obs => obs.z < 1.1);
 
     for (let i = 0; i < coinItems.length; i++) {
-        coinItems[i].z += 0.025 * (speed / 4);
+        coinItems[i].z += 0.02 * (speed / 4);
         let c = coinItems[i];
         if (c.z >= 0.80 && c.z <= 0.98 && c.lane === playerLane) {
             coins += 10;
@@ -300,7 +299,7 @@ function draw() {
     for (let i = 0; i < coinItems.length; i++) {
         let c = coinItems[i];
         let p = project(baseLanesX[c.lane], 500, c.z);
-        let radius = 14 * c.scale;
+        let radius = Math.max(10, 16 * c.scale);
         
         ctx.beginPath();
         ctx.arc(p.x, p.y - 20, radius, 0, Math.PI * 2);
@@ -311,11 +310,11 @@ function draw() {
         ctx.stroke();
         
         ctx.fillStyle = "#b36b00";
-        ctx.font = `bold ${Math.floor(14 * c.scale)}px Arial`;
-        ctx.fillText("$", p.x - 5 * c.scale, p.y - 14 * c.scale);
+        ctx.font = `bold ${Math.max(10, Math.floor(14 * c.scale))}px Arial`;
+        ctx.fillText("$", p.x - 4 * c.scale, p.y - 14 * c.scale);
     }
 
-    // 4. Chướng ngại vật (Tàu hỏa & Rào chắn rõ nét)
+    // 4. Chướng ngại vật (Tàu hỏa & Rào chắn to rõ)
     let allEntities = [];
     obstacles.forEach(o => allEntities.push(o));
     allEntities.sort((a, b) => a.z - b.z);
@@ -325,8 +324,8 @@ function draw() {
         let scale = item.scale;
 
         if (item.type === "train") {
-            let w = 100 * scale;
-            let h = 140 * scale;
+            let w = 110 * scale;
+            let h = 150 * scale;
             let x = p.x - w / 2;
             let y = p.y - h;
 
@@ -338,15 +337,15 @@ function draw() {
 
             ctx.fillStyle = "#f1c40f";
             ctx.beginPath();
-            ctx.arc(x + w * 0.5, y + h * 0.6, 9 * scale, 0, Math.PI * 2);
+            ctx.arc(x + w * 0.5, y + h * 0.6, 10 * scale, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.strokeStyle = "#c0392b";
             ctx.lineWidth = 3;
             ctx.strokeRect(x, y, w, h);
         } else {
-            let w = 90 * scale;
-            let h = 50 * scale;
+            let w = 100 * scale;
+            let h = 55 * scale;
             let x = p.x - w / 2;
             let y = p.y - h;
 
@@ -419,7 +418,6 @@ function draw() {
         ctx.font = "15px Arial";
         ctx.fillText("Né tàu, rào chắn và thu thập vàng!", canvas.width / 2, canvas.height / 2 - 35);
 
-        // Nút Bắt Đầu
         ctx.fillStyle = "#27ae60";
         ctx.fillRect(canvas.width / 2 - 120, canvas.height / 2 + 10, 240, 60);
         ctx.strokeStyle = "#2ecc71";
@@ -447,7 +445,6 @@ function draw() {
         ctx.fillText("Tổng điểm: " + Math.floor(score), canvas.width / 2, canvas.height / 2 - 20);
         ctx.fillText("Số vàng thu thập: " + coins, canvas.width / 2, canvas.height / 2 + 10);
 
-        // Nút Chơi Lại rõ ràng
         ctx.fillStyle = "#f39c12";
         ctx.fillRect(canvas.width / 2 - 120, canvas.height / 2 + 50, 240, 60);
         ctx.strokeStyle = "#f1c40f";
@@ -469,7 +466,7 @@ function loop() {
     }
 }
 
-// Khởi tạo vẽ màn hình chờ ban đầu
+// Vẽ màn hình chờ ban đầu
 draw();
 </script>
 
