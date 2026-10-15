@@ -2,19 +2,19 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # Cấu hình trang Streamlit
-st.set_page_config(page_title="Subway Surfers Pro - Fixed", page_icon="🛹", layout="centered")
+st.set_page_config(page_title="Subway Surfers Pro - Mobile Fixed", page_icon="🛹", layout="centered")
 
 st.markdown("""
     <h2 style='text-align: center; color: #ff6600; margin-bottom: 0;'>🛹 Subway Surfers: Streamlit Edition</h2>
     <p style='text-align: center; color: #666; margin-top: 5px;'>Né tàu hỏa, rào chắn và thu thập tiền vàng!</p>
 """, unsafe_allow_html=True)
 
-# Mã nguồn HTML/JS hoàn thiện có màn hình Bắt đầu & Nút Chơi lại
 game_code = """
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subway Surfers Fixed</title>
     <style>
         body {
@@ -35,9 +35,13 @@ game_code = """
             border-radius: 12px;
             overflow: hidden;
             border: 4px solid #333;
+            max-width: 100%;
         }
         canvas {
             display: block;
+            width: 100%;
+            max-width: 420px;
+            height: auto;
             background: linear-gradient(to bottom, #4a90e2, #b4e0ff);
         }
         .controls {
@@ -46,7 +50,7 @@ game_code = """
             gap: 15px;
         }
         button {
-            padding: 10px 22px;
+            padding: 12px 24px;
             font-size: 16px;
             font-weight: bold;
             background: #ffcc00;
@@ -87,7 +91,6 @@ let score = 0;
 let coins = 0;
 let speed = 4;
 
-// Trạng thái game
 let gameStarted = false;
 let isGameOver = false;
 
@@ -95,7 +98,7 @@ let obstacles = [];
 let coinItems = [];
 let obstacleTimer = null;
 
-// Lắng nghe sự kiện bàn phím
+// Lắng nghe phím bấm bàn phím
 window.addEventListener('keydown', function(e) {
     if (!gameStarted && (e.key === "Enter" || e.key === " ")) {
         startGame();
@@ -110,24 +113,40 @@ window.addEventListener('keydown', function(e) {
     if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") jump();
 });
 
-// Xử lý click chuột trên canvas để bấm nút Bắt đầu / Chơi lại
-canvas.addEventListener('click', function(e) {
+// Xử lý chạm/click chính xác trên mọi màn hình (Mobile & PC)
+function handleCanvasClick(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Tính tỷ lệ co giãn thực tế của canvas trên màn hình
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
 
     if (!gameStarted) {
-        // Nút Bắt đầu (vùng giữa màn hình)
-        if (x >= 140 && x <= 340 && y >= 360 && y <= 420) {
+        // Tọa độ nút Bắt Đầu: tâm canvas từ y: 340 đến 420
+        if (x >= 120 && x <= 360 && y >= 340 && y <= 430) {
             startGame();
         }
     } else if (isGameOver) {
-        // Nút Chơi lại
-        if (x >= 140 && x <= 340 && y >= 400 && y <= 460) {
+        // Tọa độ nút Chơi Lại: y từ 380 đến 470
+        if (x >= 120 && x <= 360 && y >= 380 && y <= 470) {
             resetGame();
         }
     }
+}
+
+canvas.addEventListener('click', function(e) {
+    handleCanvasClick(e.clientX, e.clientY);
 });
+
+canvas.addEventListener('touchstart', function(e) {
+    if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        handleCanvasClick(touch.clientX, touch.clientY);
+        e.preventDefault(); // Ngăn cuộn trang khi chạm vào game
+    }
+}, {passive: false});
 
 function moveLeft() {
     if (playerLane > 0 && gameStarted && !isGameOver) playerLane--;
@@ -181,11 +200,10 @@ function spawnEntities() {
     
     obstacles.push({
         lane: lane,
-        z: 0.1, // Bắt đầu từ xa rõ ràng hơn
+        z: 0.1,
         type: type
     });
 
-    // Sinh tiền vàng
     if (Math.random() > 0.3) {
         let coinLane = (lane + 1) % 3;
         coinItems.push({
@@ -217,12 +235,10 @@ function update() {
 
     speed = 4 + Math.floor(score / 400);
 
-    // Cập nhật chướng ngại vật
     for (let i = 0; i < obstacles.length; i++) {
         obstacles[i].z += 0.025 * (speed / 4);
 
         let obs = obstacles[i];
-        // Va chạm khi đến gần (z từ 0.80 đến 0.98)
         if (obs.z >= 0.80 && obs.z <= 0.98 && obs.lane === playerLane) {
             if (obs.type === "train" || (obs.type === "barrier" && playerY >= 430)) {
                 isGameOver = true;
@@ -231,7 +247,6 @@ function update() {
     }
     obstacles = obstacles.filter(obs => obs.z < 1.1);
 
-    // Cập nhật tiền vàng
     for (let i = 0; i < coinItems.length; i++) {
         coinItems[i].z += 0.025 * (speed / 4);
         let c = coinItems[i];
@@ -249,11 +264,10 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Bầu trời
+    // 1. Bầu trời & Tòa nhà nền
     ctx.fillStyle = "#70c5ce";
     ctx.fillRect(0, 0, canvas.width, 160);
 
-    // Tòa nhà nền
     ctx.fillStyle = "#5298a0";
     ctx.fillRect(40, 60, 70, 100);
     ctx.fillRect(130, 40, 90, 120);
@@ -301,7 +315,7 @@ function draw() {
         ctx.fillText("$", p.x - 5 * c.scale, p.y - 14 * c.scale);
     }
 
-    // 4. Chướng ngại vật (Tàu hỏa & Rào chắn)
+    // 4. Chướng ngại vật (Tàu hỏa & Rào chắn rõ nét)
     let allEntities = [];
     obstacles.forEach(o => allEntities.push(o));
     allEntities.sort((a, b) => a.z - b.z);
@@ -316,15 +330,12 @@ function draw() {
             let x = p.x - w / 2;
             let y = p.y - h;
 
-            // Thân tàu hỏa màu đỏ nổi bật
             ctx.fillStyle = "#e74c3c";
             ctx.fillRect(x, y, w, h);
 
-            // Kính chắn gió
             ctx.fillStyle = "#3498db";
             ctx.fillRect(x + w * 0.15, y + h * 0.1, w * 0.7, h * 0.3);
 
-            // Đèn pha
             ctx.fillStyle = "#f1c40f";
             ctx.beginPath();
             ctx.arc(x + w * 0.5, y + h * 0.6, 9 * scale, 0, Math.PI * 2);
@@ -342,7 +353,6 @@ function draw() {
             ctx.fillStyle = "#d35400";
             ctx.fillRect(x, y, w, h);
 
-            // Sọc vàng cảnh báo
             ctx.fillStyle = "#f1c40f";
             ctx.fillRect(x + w * 0.2, y, w * 0.2, h);
             ctx.fillRect(x + w * 0.6, y, w * 0.2, h);
@@ -357,7 +367,6 @@ function draw() {
     let playerX = baseLanesX[playerLane];
     let pRadius = 28;
 
-    // Ván trượt
     ctx.fillStyle = "#9b59b6";
     ctx.beginPath();
     ctx.ellipse(playerX, playerY + 12, 22, 8, 0, 0, Math.PI * 2);
@@ -366,7 +375,6 @@ function draw() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Thân
     ctx.fillStyle = "#ecf0f1";
     ctx.beginPath();
     ctx.arc(playerX, playerY - 10, pRadius, 0, Math.PI * 2);
@@ -375,13 +383,11 @@ function draw() {
     ctx.strokeStyle = "#bdc3c7";
     ctx.stroke();
 
-    // Mặt
     ctx.fillStyle = "#f39c12";
     ctx.beginPath();
     ctx.arc(playerX, playerY - 14, 16, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mũ lưỡi trai đỏ
     ctx.fillStyle = "#c0392b";
     ctx.beginPath();
     ctx.arc(playerX, playerY - 22, 14, Math.PI, Math.PI * 2);
@@ -401,56 +407,56 @@ function draw() {
 
     // --- MÀN HÌNH BẮT ĐẦU ---
     if (!gameStarted) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.fillStyle = "#ffcc00";
-        ctx.font = "bold 34px Arial";
+        ctx.font = "bold 32px Arial";
         ctx.textAlign = "center";
-        ctx.fillText("SUBWAY SURFERS", canvas.width / 2, canvas.height / 2 - 70);
+        ctx.fillText("SUBWAY SURFERS", canvas.width / 2, canvas.height / 2 - 80);
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "16px Arial";
-        ctx.fillText("Dùng phím Trái/Phải hoặc nút bên dưới để né tránh", canvas.width / 2, canvas.height / 2 - 25);
+        ctx.font = "15px Arial";
+        ctx.fillText("Né tàu, rào chắn và thu thập vàng!", canvas.width / 2, canvas.height / 2 - 35);
 
         // Nút Bắt Đầu
         ctx.fillStyle = "#27ae60";
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 20, 200, 50);
+        ctx.fillRect(canvas.width / 2 - 120, canvas.height / 2 + 10, 240, 60);
         ctx.strokeStyle = "#2ecc71";
         ctx.lineWidth = 3;
-        ctx.strokeRect(canvas.width / 2 - 100, canvas.height / 2 + 20, 200, 50);
+        ctx.strokeRect(canvas.width / 2 - 120, canvas.height / 2 + 10, 240, 60);
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 20px Arial";
-        ctx.fillText("BẮT ĐẦU CHƠI", canvas.width / 2, canvas.height / 2 + 52);
+        ctx.font = "bold 22px Arial";
+        ctx.fillText("▶ BẮT ĐẦU CHƠI", canvas.width / 2, canvas.height / 2 + 48);
         ctx.textAlign = "left";
     }
 
-    // --- MÀN HÌNH GAME OVER (KẾT THÚC) ---
+    // --- MÀN HÌNH KẾT THÚC (GAME OVER) ---
     if (isGameOver) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.88)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.fillStyle = "#e74c3c";
         ctx.font = "bold 36px Arial";
         ctx.textAlign = "center";
-        ctx.fillText("BẮT GIỮ!", canvas.width / 2, canvas.height / 2 - 60);
+        ctx.fillText("BẮT GIỮ!", canvas.width / 2, canvas.height / 2 - 70);
 
         ctx.fillStyle = "#ffffff";
         ctx.font = "18px Arial";
-        ctx.fillText("Tổng điểm: " + Math.floor(score), canvas.width / 2, canvas.height / 2 - 10);
-        ctx.fillText("Số vàng thu thập: " + coins, canvas.width / 2, canvas.height / 2 + 20);
+        ctx.fillText("Tổng điểm: " + Math.floor(score), canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillText("Số vàng thu thập: " + coins, canvas.width / 2, canvas.height / 2 + 10);
 
-        // Nút Chơi Lại có chữ rõ ràng
+        // Nút Chơi Lại rõ ràng
         ctx.fillStyle = "#f39c12";
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 60, 200, 50);
+        ctx.fillRect(canvas.width / 2 - 120, canvas.height / 2 + 50, 240, 60);
         ctx.strokeStyle = "#f1c40f";
         ctx.lineWidth = 3;
-        ctx.strokeRect(canvas.width / 2 - 100, canvas.height / 2 + 60, 200, 50);
+        ctx.strokeRect(canvas.width / 2 - 120, canvas.height / 2 + 50, 240, 60);
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 20px Arial";
-        ctx.fillText("CHƠI LẠI", canvas.width / 2, canvas.height / 2 + 92);
+        ctx.font = "bold 22px Arial";
+        ctx.fillText("🔄 CHƠI LẠI", canvas.width / 2, canvas.height / 2 + 88);
         ctx.textAlign = "left";
     }
 }
@@ -463,7 +469,7 @@ function loop() {
     }
 }
 
-// Vẽ khung hình chờ ban đầu
+// Khởi tạo vẽ màn hình chờ ban đầu
 draw();
 </script>
 
